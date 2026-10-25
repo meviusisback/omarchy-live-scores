@@ -1,0 +1,53 @@
+{
+  "$schema": "https://raw.githubusercontent.com/omarchy/omarchy/main/schemas/plugin.json",
+  "schemaVersion": 1,
+  "id": "meviusisback.live-scores",
+  "name": "Live Scores",
+  "version": "1.0.0",
+  "author": "meviusisback",
+  "license": "MIT",
+  "repository": "https://github.com/meviusisback/omarchy-live-scores",
+  "description": "Risultati live delle tue squadre preferite nella barra di Omarchy: loghi e punteggio in diretta, statistiche stile FlashScore nel pannello, prossime partite, risultati di oggi e notizie. Senza diretta mostra un pallone e il pannello diventa impostazioni.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Live Scores",
+    "description": "Risultati live delle squadre preferite con statistiche, calendario e notizie.",
+    "category": "Sport",
+    "allowMultiple": false,
+    "defaults": {
+      "favoriteTeams": "inter,milan,juventus,napoli,roma,lazio",
+      "leagues": "ita.1,eng.1,esp.1,ger.1,fra.1,uefa.champions,uefa.europa",
+      "refreshIntervalSec": 90
+    },
+    "schema": [
+      {
+        "key": "favoriteTeams",
+        "type": "string",
+        "label": "Squadre preferite",
+        "defaultValue": "inter,milan,juventus,napoli,roma,lazio",
+        "description": "Id separati da virgola (vedi tab Squadre nel pannello): inter, milan, juventus, napoli, roma, lazio, fiorentina, atalanta, bologna, torino, arsenal, liverpool, man-city, chelsea, man-utd, tottenham, real-madrid, barcellona, atletico, bayern, dortmund, leverkusen, psg, marsiglia."
+      },
+      {
+        "key": "leagues",
+        "type": "string",
+        "label": "Campionati",
+        "defaultValue": "ita.1,eng.1,esp.1,ger.1,fra.1,uefa.champions,uefa.europa",
+        "description": "Campionati da seguire: ita.1 (Serie A), eng.1 (Premier), esp.1 (LaLiga), ger.1 (Bundesliga), fra.1 (Ligue 1), uefa.champions, uefa.europa."
+      },
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Aggiornamento (secondi)",
+        "min": 30,
+        "max": 600,
+        "step": 15,
+        "defaultValue": 90
+      }
+    ]
+  }
+}
