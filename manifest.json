@@ -3,11 +3,11 @@
   "schemaVersion": 1,
   "id": "meviusisback.live-scores",
   "name": "Live Scores",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "author": "meviusisback",
   "license": "MIT",
   "repository": "https://github.com/meviusisback/omarchy-live-scores",
-  "description": "Risultati live delle tue squadre preferite nella barra di Omarchy: loghi e punteggio in diretta, statistiche stile FlashScore nel pannello, prossime partite, risultati di oggi e notizie. Senza diretta mostra un pallone e il pannello diventa impostazioni.",
+  "description": "Live scores of your favorite teams in the Omarchy bar: logos and live score, FlashScore-style stats in the panel, upcoming matches, results and news. With no live match it shows a ball and the panel becomes settings.",
   "kinds": [
     "bar-widget"
   ],
@@ -16,8 +16,8 @@
   },
   "barWidget": {
     "displayName": "Live Scores",
-    "description": "Risultati live delle squadre preferite con statistiche, calendario e notizie.",
-    "category": "Sport",
+    "description": "Live scores of favorite teams with stats, fixtures and news.",
+    "category": "Widgets",
     "allowMultiple": false,
     "defaults": {
       "favoriteTeams": "inter,milan,juventus,napoli,roma,lazio",
@@ -28,21 +28,21 @@
       {
         "key": "favoriteTeams",
         "type": "string",
-        "label": "Squadre preferite",
+        "label": "Favorite teams",
         "defaultValue": "inter,milan,juventus,napoli,roma,lazio",
-        "description": "Nomi brevi o id ESPN separati da virgola. Il modo facile è il tab Squadre nel pannello: cerca e premi ＋. Vecchi nomi (inter, milan, juventus…) e parole libere (como) continuano a funzionare."
+        "description": "Short names or ESPN ids, comma separated. The easy way is the Teams tab in the panel: search and press ＋. Old names (inter, milan, juventus…) and free words (como) keep working."
       },
       {
         "key": "leagues",
         "type": "string",
-        "label": "Campionati",
+        "label": "Leagues",
         "defaultValue": "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/ned.1,soccer/por.1,soccer/uefa.champions,soccer/uefa.europa,soccer/uefa.euro,soccer/uefa.nations,basketball/nba,basketball/euroleague,basketball/lba,hockey/nhl",
-        "description": "Campionati coperti e cercabili: soccer/ita.1 (Serie A), soccer/eng.1 (Premier), soccer/esp.1 (LaLiga), soccer/ger.1 (Bundesliga), soccer/fra.1 (Ligue 1), soccer/ned.1 (Eredivisie), soccer/por.1, soccer/uefa.champions, soccer/uefa.europa, soccer/uefa.euro (Europei), soccer/uefa.nations (Nations League con le nazionali), basketball/nba, basketball/euroleague, basketball/lba (Serie A basket), hockey/nhl. I valori senza sport (ita.1…) valgono come calcio."
+        "description": "Covered and searchable leagues: soccer/ita.1 (Serie A), soccer/eng.1 (Premier), soccer/esp.1 (LaLiga), soccer/ger.1 (Bundesliga), soccer/fra.1 (Ligue 1), soccer/ned.1 (Eredivisie), soccer/por.1 (Liga Portugal), soccer/uefa.champions, soccer/uefa.europa, soccer/uefa.euro (Euros), soccer/uefa.nations (Nations League with national teams), basketball/nba, basketball/euroleague, basketball/lba (Italian Serie A), hockey/nhl. Values without sport (ita.1…) count as soccer."
       },
       {
         "key": "refreshIntervalSec",
         "type": "integer",
-        "label": "Aggiornamento (secondi)",
+        "label": "Refresh (seconds)",
         "min": 30,
         "max": 600,
         "step": 15,

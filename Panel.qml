@@ -5,11 +5,11 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Live Scores: risultati in diretta delle squadre preferite.
-// Barra: loghi + punteggio quando c'è una diretta, pallone altrimenti.
-// Pannello: statistiche stile FlashScore, prossime partite, risultati,
-// notizie e tab Squadre per scegliere le preferite.
-// Dati: API pubblica ESPN (senza chiave), rinfrescata ogni refreshIntervalSec.
+// Live Scores: favorite teams, live.
+// Bar: logos + score during a live match, a ball otherwise.
+// Panel: FlashScore-style stats, upcoming matches, results,
+// news and a Teams tab to pick favorites.
+// Data: ESPN public API (no key), refreshed every refreshIntervalSec.
 Panel {
   id: root
   moduleName: "meviusisback.live-scores"
@@ -25,13 +25,13 @@ Panel {
   readonly property color accent: Color.accent
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  // ------------------------------------------------------------ impostazioni
+  // ---------------------------------------------------------------- settings
   readonly property string favSetting: String(setting("favoriteTeams", "inter,milan,juventus,napoli,roma,lazio"))
   readonly property var favIds: favSetting.split(",").map(function (s) { return s.trim().toLowerCase() }).filter(function (s) { return s !== "" })
   readonly property string leaguesSetting: String(setting("leagues", "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/ned.1,soccer/por.1,soccer/uefa.champions,soccer/uefa.europa,soccer/uefa.euro,soccer/uefa.nations,basketball/nba,basketball/euroleague,basketball/lba,hockey/nhl"))
-  readonly property int refreshIntervalSec: Math.max(30, Number(setting("refreshIntervalSec", 90)) || 90)
+  readonly property int refreshIntervalSec: Math.min(600, Math.max(30, Number(setting("refreshIntervalSec", 90)) || 90))
 
-  // ------------------------------------------------------------------- dati
+  // --------------------------------------------------------------------- data
   property var liveMatches: []
   property var upcoming: []
   property var results: []
@@ -49,19 +49,19 @@ Panel {
   property bool summaryLoading: false
   property bool scoreArmed: false
 
-  // Ricerca squadre (tab Squadre): digita e filtra in tempo reale.
+  // Team search (Teams tab): type to filter in real time.
   property string searchText: ""
 
   readonly property string scoreKey: root.firstLive
     ? (root.firstLive.id + "|" + root.firstLive.home.score + ":" + root.firstLive.away.score) : ""
 
   onScoreKeyChanged: {
-    // Il primo giro arma soltanto: niente animazione all'avvio.
+    // The first round only arms: no animation at startup.
     if (!root.scoreArmed) return
     if (root.scoreKey !== "") goalPulse.restart()
   }
 
-  // Selezione squadre (bozza finché non premi Salva).
+  // Team selection (draft until you press Save).
   property var pendingFavs: []
   property bool favsDirty: false
 
@@ -73,25 +73,25 @@ Panel {
     "soccer/ita.1": "Serie A", "soccer/eng.1": "Premier League",
     "soccer/esp.1": "LaLiga", "soccer/ger.1": "Bundesliga",
     "soccer/fra.1": "Ligue 1", "soccer/uefa.champions": "Champions",
-    "soccer/uefa.europa": "Europa League", "soccer/uefa.euro": "Europei",
+    "soccer/uefa.europa": "Europa League", "soccer/uefa.euro": "Euros",
     "soccer/uefa.nations": "Nations League", "soccer/ned.1": "Eredivisie",
-    "soccer/por.1": "Liga Portogallo", "basketball/nba": "NBA",
-    "basketball/euroleague": "Eurolega", "basketball/lba": "Serie A Basket",
+    "soccer/por.1": "Liga Portugal", "basketball/nba": "NBA",
+    "basketball/euroleague": "EuroLeague", "basketball/lba": "LBA Serie A",
     "hockey/nhl": "NHL"
   })
 
   function leagueLabel(league) { return root.leagueNames[league] || league }
 
   readonly property string heroCaption: {
-    if (root.loading) return "AGGIORNAMENTO…"
+    if (root.loading) return "LOADING…"
     var n = (root.liveMatches || []).length
-    if (n > 0) return n === 1 ? "1 DIRETTA" : n + " DIRETTE"
+    if (n > 0) return n === 1 ? "1 LIVE" : n + " LIVE"
     if (root.errorText !== "") return "OFFLINE"
-    return "NESSUNA DIRETTA"
+    return "NO LIVE"
   }
 
   readonly property string tooltipText: {
-    if (!root.hasLive) return "Live Scores — nessuna diretta delle tue squadre"
+    if (!root.hasLive) return "Live Scores — none of your teams are playing"
     var parts = []
     for (var i = 0; i < root.liveMatches.length; i++) {
       var m = root.liveMatches[i]
@@ -181,8 +181,8 @@ Panel {
 
   function refresh() {
     if (boardProc.running) return
-    // Il comando va ricostruito a ogni giro: la riga del processo
-    // congela gli argomenti di avvio e ignorerebbe le nuove preferite.
+    // Rebuild the command every run: the process line
+    // freezes startup arguments and would ignore new favorites.
     boardProc.command = ["python3", root.scriptPath(), "--favorites", root.favSetting, "--leagues", root.leaguesSetting]
     boardProc.running = true
   }
@@ -193,8 +193,8 @@ Panel {
     teamsProc.running = true
   }
 
-  // Se cambi campionati o preferite dalle impostazioni, ricarica subito:
-  // il catalogo squadre segue i campionati, la barra le preferite.
+  // If leagues or favorites change in settings, reload right away:
+  // the team catalog follows leagues, the bar follows favorites.
   onLeaguesSettingChanged: {
     root.runTeams()
     root.refresh()
@@ -220,7 +220,7 @@ Panel {
     root.news = data.news || []
     root.errorText = data.error || ""
     root.loading = false
-    // Tieni selezionata la diretta (o la prima) e aggiorna le statistiche.
+    // Keep the live match selected (or the first one) and refresh stats.
     var sel = null
     if (root.selected) {
       var want = root.selected.id
@@ -232,7 +232,7 @@ Panel {
     if (sel && root.tab === "live") root.refreshSummary()
   }
 
-  // ------------------------------------------------------------- processi
+  // ------------------------------------------------------------ processes
   Process {
     id: boardProc
     stdout: StdioCollector {
@@ -329,7 +329,7 @@ Panel {
     }
   }
 
-  // ------------------------------------------------------------ barra: live
+  // ------------------------------------------------------------ bar: live
   Item {
     id: liveItem
     visible: root.hasLive
@@ -424,7 +424,7 @@ Panel {
       Component.onDestruction: if (root.bar && root.bar.unregisterClickTarget) root.bar.unregisterClickTarget(liveItem)
     }
 
-    // Animazione gol: il punteggio pulsa quando cambia il risultato.
+    // Goal animation: the score pulses when the result changes.
     SequentialAnimation {
       id: goalPulse
       ScaleAnimator { target: barScore; from: 1; to: 1.35; duration: 180; easing.type: Easing.OutCubic }
@@ -432,14 +432,14 @@ Panel {
     }
   }
 
-  // ------------------------------------------------------- barra: nessun live
+  // ------------------------------------------------------- bar: no live
   BarIconButton {
     id: idleButton
     visible: !root.hasLive
     anchors.fill: parent
     bar: root.bar
     text: ""
-    tooltipText: root.errorText !== "" ? "Live Scores — offline, riprovo da solo" : "Live Scores — nessuna diretta"
+    tooltipText: root.errorText !== "" ? "Live Scores — offline, retrying on its own" : "Live Scores — no live match"
     active: false
     onPressed: function (buttonCode) {
       if (buttonCode === Qt.RightButton) root.refresh()
@@ -450,7 +450,7 @@ Panel {
     }
   }
 
-  // ------------------------------------------------------- ancora del pannello
+  // ------------------------------------------------------- panel anchor
   Item {
     id: panelAnchor
     anchors.right: parent.right
@@ -458,7 +458,7 @@ Panel {
     height: parent.height
   }
 
-  // -------------------------------------------------------------- pannello
+  // -------------------------------------------------------------- panel
   KeyboardPanel {
     id: panel
     anchorItem: panelAnchor
@@ -505,7 +505,8 @@ Panel {
 
             Text {
               id: heroIcon
-              text: root.hasLive ? "" : ""
+              text: root.hasLive ? "\uf1e3" : "\uf1e3"
+              textFormat: Text.PlainText
               color: root.hasLive ? root.urgent : root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.display
@@ -551,29 +552,29 @@ Panel {
             spacing: Style.space(6)
 
             Button {
-              text: "Diretta"
+              text: "Live"
               selected: root.tab === "live"
               leftAlign: false
               onClicked: root.tab = "live"
             }
             Button {
-              text: "Prossime"
+              text: "Upcoming"
               selected: root.tab === "upcoming"
               onClicked: root.tab = "upcoming"
             }
             Button {
-              text: "Notizie"
+              text: "News"
               selected: root.tab === "news"
               onClicked: root.tab = "news"
             }
             Button {
-              text: "Squadre"
+              text: "Teams"
               selected: root.tab === "teams"
               onClicked: { root.tab = "teams"; root.syncPending() }
             }
           }
 
-          // ----------------------------------------------- tab Diretta
+          // ------------------------------------------------- Live tab
           Column {
             width: parent.width
             spacing: Style.space(10)
@@ -582,7 +583,7 @@ Panel {
             Text {
               width: parent.width
               visible: root.loading
-              text: "Sto caricando i risultati…"
+              text: "Loading scores…"
               textFormat: Text.PlainText
               color: root.dim
               font.family: root.fontFamily
@@ -592,7 +593,7 @@ Panel {
             Text {
               width: parent.width
               visible: !root.loading && !root.hasLive && root.errorText === ""
-              text: "Nessuna diretta ora. Sotto le prossime partite delle tue squadre — vai su Squadre per cambiarle."
+              text: "No live match right now. Your teams’ upcoming games are below — open Teams to change them."
               textFormat: Text.PlainText
               wrapMode: Text.WordWrap
               color: root.dim
@@ -603,7 +604,7 @@ Panel {
             Text {
               width: parent.width
               visible: !root.loading && root.errorText !== ""
-              text: "Non riesco a raggiungere i dati (offline?). Riprovo da solo al prossimo giro — premi R per riprovare subito."
+              text: "Can’t reach the data (offline?). Retrying on its own — press R to retry now."
               textFormat: Text.PlainText
               wrapMode: Text.WordWrap
               color: root.urgent
@@ -621,7 +622,7 @@ Panel {
                 width: parent.width
                 spacing: Style.space(8)
 
-                // Riga cliccabile: seleziona la partita e carica le statistiche.
+                // Clickable row: select the match and load its stats.
                 Rectangle {
                   width: parent.width
                   implicitHeight: headRow.implicitHeight + Style.space(14)
@@ -698,7 +699,7 @@ Panel {
               }
             }
 
-            // Statistiche stile FlashScore della partita selezionata.
+            // FlashScore-style stats for the selected match.
             Column {
               width: parent.width
               spacing: Style.space(6)
@@ -706,7 +707,7 @@ Panel {
 
               Text {
                 width: parent.width
-                text: "Statistiche"
+                text: "Stats"
                 textFormat: Text.PlainText
                 color: root.foreground
                 font.family: root.fontFamily
@@ -717,7 +718,7 @@ Panel {
               Text {
                 width: parent.width
                 visible: root.summaryLoading
-                text: "Carico le statistiche…"
+                text: "Loading stats…"
                 textFormat: Text.PlainText
                 color: root.dim
                 font.family: root.fontFamily
@@ -737,7 +738,7 @@ Panel {
                 }
               }
 
-              // Cronaca gol e cartellini.
+              // Goal and card timeline.
               Repeater {
                 model: root.summaryLoading ? [] : root.summaryTimeline
 
@@ -758,17 +759,17 @@ Panel {
                 spacing: Style.space(8)
 
                 Button {
-                  text: "Apri su FlashScore"
+                  text: "Open on FlashScore"
                   onClicked: Qt.openUrlExternally("https://www.flashscore.it/")
                 }
                 Button {
-                  visible: root.selected && root.selected.espnLink !== ""
+                  visible: root.selected && (root.selected.espnLink || "").indexOf("https://") === 0
                   text: "Gamecast ESPN"
                   onClicked: Qt.openUrlExternally(root.selected ? root.selected.espnLink : "")
                 }
               }
 
-              // Formazioni (quando disponibili).
+              // Lineups (when available).
               Column {
                 width: parent.width
                 spacing: Style.space(6)
@@ -776,7 +777,7 @@ Panel {
 
                 Text {
                   width: parent.width
-                  text: "Formazioni"
+                  text: "Lineups"
                   textFormat: Text.PlainText
                   color: root.foreground
                   font.family: root.fontFamily
@@ -825,7 +826,7 @@ Panel {
                 }
               }
 
-              // Cronaca testuale (play-by-play, inglese ESPN).
+              // Text commentary (play-by-play, ESPN English).
               Column {
                 width: parent.width
                 spacing: Style.space(4)
@@ -833,7 +834,7 @@ Panel {
 
                 Text {
                   width: parent.width
-                  text: "Cronaca"
+                  text: "Commentary"
                   textFormat: Text.PlainText
                   color: root.foreground
                   font.family: root.fontFamily
@@ -858,7 +859,7 @@ Panel {
               }
             }
 
-            // Quando non c'è nessuna diretta: anteprima prossime.
+            // When there is no live match: upcoming preview.
             Column {
               width: parent.width
               spacing: Style.space(4)
@@ -866,7 +867,7 @@ Panel {
 
               Text {
                 width: parent.width
-                text: "Prossime partite"
+                text: "Upcoming matches"
                 textFormat: Text.PlainText
                 color: root.foreground
                 font.family: root.fontFamily
@@ -891,7 +892,7 @@ Panel {
             }
           }
 
-          // ---------------------------------------------- tab Prossime
+          // --------------------------------------------- Upcoming tab
           Column {
             width: parent.width
             spacing: Style.space(6)
@@ -899,7 +900,7 @@ Panel {
 
             Text {
               width: parent.width
-              text: "Prossime partite"
+              text: "Upcoming matches"
               textFormat: Text.PlainText
               color: root.foreground
               font.family: root.fontFamily
@@ -910,7 +911,7 @@ Panel {
             Text {
               width: parent.width
               visible: (root.upcoming || []).length === 0
-              text: root.loading ? "Sto caricando…" : "Nessuna partita in programma per le tue squadre."
+              text: root.loading ? "Loading…" : "No upcoming matches for your teams."
               textFormat: Text.PlainText
               wrapMode: Text.WordWrap
               color: root.dim
@@ -946,11 +947,11 @@ Panel {
               }
             }
 
-            // Risultati delle partite passate (solo preferite).
+            // Past results (favorites only).
             Text {
               width: parent.width
               visible: (root.results || []).length > 0
-              text: "Risultati"
+              text: "Results"
               textFormat: Text.PlainText
               color: root.foreground
               font.family: root.fontFamily
@@ -974,7 +975,7 @@ Panel {
             }
           }
 
-          // ----------------------------------------------- tab Notizie
+          // ------------------------------------------------ News tab
           Column {
             width: parent.width
             spacing: Style.space(8)
@@ -983,7 +984,7 @@ Panel {
             Text {
               width: parent.width
               visible: (root.news || []).length === 0
-              text: root.loading ? "Sto caricando…" : "Nessuna notizia al momento."
+              text: root.loading ? "Loading…" : "No news right now."
               textFormat: Text.PlainText
               color: root.dim
               font.family: root.fontFamily
@@ -1023,7 +1024,7 @@ Panel {
                 Text {
                   width: parent.width
                   visible: (modelData.link || "") !== ""
-                  text: (modelData.league || "") !== "" ? modelData.league + " · apri ↗" : "apri ↗"
+                  text: (modelData.league || "") !== "" ? modelData.league + " · open ↗" : "open ↗"
                   textFormat: Text.PlainText
                   color: root.accent
                   font.family: root.fontFamily
@@ -1033,14 +1034,14 @@ Panel {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Qt.openUrlExternally(modelData.link)
+                    onClicked: if ((modelData.link || "").indexOf("https://") === 0) Qt.openUrlExternally(modelData.link)
                   }
                 }
               }
             }
           }
 
-          // ----------------------------------------------- tab Squadre
+          // ------------------------------------------------ Teams tab
           Column {
             width: parent.width
             spacing: Style.space(8)
@@ -1048,7 +1049,7 @@ Panel {
 
             Text {
               width: parent.width
-              text: "Le tue squadre (" + root.pendingFavs.length + ")"
+              text: "Your teams (" + root.pendingFavs.length + ")"
               textFormat: Text.PlainText
               color: root.foreground
               font.family: root.fontFamily
@@ -1075,7 +1076,7 @@ Panel {
             Text {
               width: parent.width
               visible: root.pendingFavs.length === 0
-              text: "Nessuna squadra: cercane una qui sotto."
+              text: "No teams yet: search for one below."
               textFormat: Text.PlainText
               color: root.dim
               font.family: root.fontFamily
@@ -1084,7 +1085,7 @@ Panel {
 
             Text {
               width: parent.width
-              text: "Aggiungi: digita per cercare tra Serie A, Premier, Liga, Bundesliga, Ligue 1, Eredivisie, coppe, nazionali, NBA, Eurolega, Serie A basket e NHL."
+              text: "Add more: type to search Serie A, Premier, Liga, Bundesliga, Ligue 1, Eredivisie, cups, national teams, NBA, EuroLeague, LBA Serie A and NHL."
               textFormat: Text.PlainText
               wrapMode: Text.WordWrap
               color: root.foreground
@@ -1096,7 +1097,8 @@ Panel {
             TextField {
               id: teamSearch
               width: parent.width
-              placeholderText: "Cerca squadra… (es. real, lakers, inter)"
+              placeholderText: "Search teams… (e.g. real, lakers, inter)"
+              maximumLength: 120
               text: root.searchText
               onTextChanged: root.searchText = text
               onAccepted: {
@@ -1110,7 +1112,7 @@ Panel {
             Text {
               width: parent.width
               visible: root.searchText.trim().length >= 2 && root.searchHits.length === 0
-              text: "Nessuna squadra trovata: prova con un altro nome o allarga i campionati nelle impostazioni."
+              text: "No team found: try another name or enable more leagues in settings."
               textFormat: Text.PlainText
               wrapMode: Text.WordWrap
               color: root.dim
@@ -1181,7 +1183,7 @@ Panel {
             }
 
             Button {
-              text: root.favsDirty ? "Salva le preferite" : "Salvato ✓"
+              text: root.favsDirty ? "Save favorites" : "Saved ✓"
               selected: root.favsDirty
               onClicked: if (root.favsDirty) root.saveFavs()
             }
@@ -1191,7 +1193,7 @@ Panel {
     }
   }
 
-  // Riga statistica stile FlashScore: valore casa, doppia barra, valore ospite.
+  // FlashScore-style stat row: home value, dual bar, away value.
   component StatRow: Item {
     id: statRow
     property string label: ""

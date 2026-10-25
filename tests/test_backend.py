@@ -1,4 +1,4 @@
-"""Test del backend live-scores: solo dati finti, niente rete."""
+"""live-scores backend tests: fixtures only, no network."""
 import os
 import sys
 import unittest
@@ -24,19 +24,21 @@ def fake_event(eid="1", state="in", clock="67'", detail="2nd Half - 67'"):
 
 
 class TestLeagues(unittest.TestCase):
-    def test_bare_slug_diventa_calcio(self):
+    def test_bare_slug_becomes_soccer(self):
         self.assertEqual(fs.normalize_league("ita.1"), "soccer/ita.1")
 
-    def test_sport_esplicito(self):
+    def test_explicit_sport(self):
         self.assertEqual(fs.normalize_league("basketball/nba"),
                          "basketball/nba")
 
-    def test_sconosciuto(self):
+    def test_unknown(self):
         self.assertEqual(fs.normalize_league("xxx"), "")
 
     def test_league_names_default(self):
-        self.assertIn("soccer/ita.1", fs.league_names(""))
-        self.assertIn("basketball/nba", fs.league_names("nonsense"))
+        self.assertEqual(fs.league_names(""), [])
+        self.assertEqual(fs.valid_leagues_or_empty("nonsense"), [])
+        self.assertIn("soccer/ita.1", fs.valid_leagues_or_empty(""))
+        self.assertIn("basketball/nba", fs.valid_leagues_or_empty(""))
 
     def test_link_nba(self):
         self.assertEqual(fs.espn_link("basketball/nba", "9"),
@@ -44,7 +46,7 @@ class TestLeagues(unittest.TestCase):
 
 
 class TestMatching(unittest.TestCase):
-    def test_fold_toglie_gli_accenti(self):
+    def test_fold_strips_accents(self):
         self.assertEqual(fs.fold("Atlético"), "atletico")
 
     def test_parse_favorites(self):
@@ -66,30 +68,30 @@ class TestMatching(unittest.TestCase):
         self.assertFalse(fs.match_is_favorite(match, matchers))
 
     def test_free_token(self):
-        # Parola fuori catalogo usata come parola chiave.
+        # Off-catalog word used as a keyword.
         matchers = fs.favorite_matchers(["como"])
         match = {"league": "soccer/ita.1",
                  "home": {"name": "Como 1907", "abbr": "COM"},
                  "away": {"name": "Torino", "abbr": "TOR"}}
         self.assertTrue(fs.match_is_favorite(match, matchers))
 
-    def test_int_non_prende_saint(self):
-        # "int" (Inter) è dentro "saint" (Saint-Germain): parole intere, no.
+    def test_int_does_not_match_saint(self):
+        # "int" (Inter) is inside "saint" (Saint-Germain): whole words, no match.
         matchers = fs.favorite_matchers(["inter"])
         match = {"league": "soccer/fra.1",
                  "home": {"name": "Paris Saint-Germain", "abbr": "PSG"},
                  "away": {"name": "Olympique Lyonnais", "abbr": "OL"}}
         self.assertFalse(fs.match_is_favorite(match, matchers))
 
-    def test_mil_non_prende_milwaukee(self):
-        # Stessa sigla, sport diverso: niente NBA per chi tifa Milan.
+    def test_mil_does_not_match_milwaukee(self):
+        # Same abbreviation, different sport: no NBA for Milan fans.
         matchers = fs.favorite_matchers(["milan"])
         match = {"league": "basketball/nba",
                  "home": {"name": "Milwaukee Bucks", "abbr": "MIL"},
                  "away": {"name": "Indiana Pacers", "abbr": "IND"}}
         self.assertFalse(fs.match_is_favorite(match, matchers))
 
-    def test_id_diretto(self):
+    def test_direct_id(self):
         matchers = fs.favorite_matchers(["133730"])
         match = {"league": "basketball/nba",
                  "home": {"id": "133730", "name": "LA Lakers", "abbr": "LAL"},
@@ -146,23 +148,23 @@ class TestSummary(unittest.TestCase):
                  "roster": []}],
             "commentary": [
                 {"time": {"displayValue": "65'"},
-                 "text": "Gol di Tizio!"},
-                {"time": {"displayValue": ""}, "text": "   "}],
+                 "text": "Tizio scores!"},
+                 {"time": {"displayValue": ""}, "text": "   "}],
             "news": {"articles": []}}
         try:
             out = fs.summary_payload("soccer/ita.1", "9")
         finally:
             fs.http_get_json = real
-        poss = next(s for s in out["stats"] if s["label"] == "Possesso %")
+        poss = next(s for s in out["stats"] if s["label"] == "Possession %")
         self.assertEqual((poss["home"], poss["away"]), ("60", "40"))
-        # Rigche senza dati da nessuna parte spariscono (es. Parate).
-        self.assertFalse([s for s in out["stats"] if s["label"] == "Parate"])
+        # Rows with no data on either side disappear (e.g. Saves).
+        self.assertFalse([s for s in out["stats"] if s["label"] == "Saves"])
         self.assertEqual(len(out["timeline"]), 1)
-        self.assertIn("Gol", out["timeline"][0]["text"])
+        self.assertIn("Goal", out["timeline"][0]["text"])
         self.assertEqual(out["timeline"][0]["kind"], "goal")
         self.assertEqual(len(out["lineups"]), 2)
         self.assertEqual(out["lineups"][0]["players"][0]["name"], "M. Rossi")
-        # La cronaca salta le righe vuote, più recente prima.
+        # Commentary skips blank rows, most recent first.
         self.assertEqual(len(out["commentary"]), 1)
         self.assertEqual(out["commentary"][0]["clock"], "65'")
 
@@ -192,10 +194,66 @@ class TestSummary(unittest.TestCase):
         self.assertIn("milan", team["tokens"])
         self.assertIn("mil", team["tokens"])
 
-    def test_alias_nazionali(self):
+    def test_national_team_aliases(self):
         self.assertIn("italia", fs.team_tokens({"displayName": "Italy"}))
         self.assertIn("francia", fs.team_tokens({"displayName": "France"}))
         self.assertNotIn("italia", fs.team_tokens({"displayName": "Inter"}))
+
+    def test_hostile_league_names(self):
+        # 50 junk entries + separators: no valid league → [].
+        junk = ";".join("zzz%d" % i for i in range(50))
+        self.assertEqual(fs.league_names(junk), [])
+        self.assertEqual(fs.valid_leagues_or_empty(junk), [])
+        # Empty string = default (all), not an error.
+        self.assertIn("soccer/ita.1", fs.valid_leagues_or_empty(""))
+        # Path traversal discarded.
+        self.assertNotIn("../../etc", fs.league_names("../../etc,soccer/ita.1"))
+        self.assertIn("soccer/ita.1", fs.league_names("../../etc,soccer/ita.1"))
+
+    def test_scoreboard_invalid_leagues(self):
+        out = fs.scoreboard_payload("inter", "spazzatura")
+        self.assertEqual(out["live"], [])
+        self.assertEqual(out["error"], "no-valid-leagues")
+
+    def test_merge_corrupt_cache(self):
+        real_path = fs.teams_cache_path
+        fs.teams_cache_path = lambda: "/tmp/live-scores-test-corrupt.json"
+        try:
+            with open("/tmp/live-scores-test-corrupt.json", "w") as fh:
+                fh.write('[1, "x", null]')
+            merged = fs.merge_teams_cache(["soccer/ita.1"], [])
+            self.assertEqual(merged, [])
+        finally:
+            fs.teams_cache_path = real_path
+
+    def test_http_retry(self):
+        # urlopen fails twice then succeeds: http_get_json must retry.
+        real_urlopen = fs.urllib.request.urlopen
+        calls = {"n": 0}
+
+        class FakeResp:
+            def read(self):
+                return b'{"ok": true}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def flaky(req, timeout=None):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise fs.urllib.request.HTTPError(
+                    req.full_url, 500, "boom", None, None)
+            return FakeResp()
+
+        fs.urllib.request.urlopen = flaky
+        try:
+            self.assertEqual(fs.http_get_json("https://x.test/y"), {"ok": True})
+        finally:
+            fs.urllib.request.urlopen = real_urlopen
+        self.assertEqual(calls["n"], 3)
 
 
 if __name__ == "__main__":
