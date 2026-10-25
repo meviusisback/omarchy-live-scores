@@ -35,8 +35,13 @@ LEAGUES = {
     "soccer/fra.1": "Ligue 1",
     "soccer/uefa.champions": "Champions League",
     "soccer/uefa.europa": "Europa League",
+    "soccer/uefa.euro": "Europei",
+    "soccer/uefa.nations": "Nations League",
+    "soccer/ned.1": "Eredivisie",
+    "soccer/por.1": "Liga Portogallo",
     "basketball/nba": "NBA",
     "basketball/euroleague": "Eurolega",
+    "basketball/lba": "Serie A Basket",
     "hockey/nhl": "NHL",
 }
 
@@ -60,8 +65,43 @@ def league_names(raw_list):
             out.append(norm)
     return out or list(LEAGUES)
 
-# Catalogo squadre: id stabile, etichetta, campionato, chiavi di ricerca
-# (nomi it/en + abbreviazioni ESPN).
+# Alias italiani per le nazionali (ESPN le chiama in inglese).
+NATIONAL_ALIASES = {
+    "italy": ["italia"],
+    "france": ["francia"],
+    "spain": ["spagna"],
+    "germany": ["germania"],
+    "england": ["inghilterra"],
+    "portugal": ["portogallo"],
+    "netherlands": ["olanda", "paesi bassi"],
+    "belgium": ["belgio"],
+    "croatia": ["croazia"],
+    "serbia": ["serbia"],
+    "switzerland": ["svizzera"],
+    "austria": ["austria"],
+    "poland": ["polonia"],
+    "denmark": ["danimarca"],
+    "sweden": ["svezia"],
+    "norway": ["norvegia"],
+    "greece": ["grecia"],
+    "turkey": ["turchia"],
+    "ukraine": ["ucraina"],
+    "scotland": ["scozia"],
+    "wales": ["galles"],
+    "romania": ["romania"],
+}
+
+
+def team_tokens(team):
+    tokens = {fold(team.get("displayName", "")),
+              fold(team.get("abbreviation", "")),
+              fold(team.get("shortDisplayName", "")),
+              fold(team.get("slug", "")).replace("-", " "),
+              fold(team.get("location", "")),
+              fold(team.get("name", ""))}
+    for tok in list(tokens):
+        tokens.update(NATIONAL_ALIASES.get(tok, []))
+    return sorted(t for t in tokens if t)
 TEAMS = [
     {"id": "inter", "label": "Inter", "league": "soccer/ita.1",
      "tokens": ["inter", "internazionale", "int"]},
@@ -427,17 +467,12 @@ def fetch_league_teams(league):
                 team = entry.get("team", {})
                 logos = [l.get("href", "") for l in team.get("logos", [])
                          if "dark" not in str(l.get("rel", ""))]
-                tokens = {fold(team.get("displayName", "")),
-                          fold(team.get("abbreviation", "")),
-                          fold(team.get("shortDisplayName", "")),
-                          fold(team.get("slug", "")).replace("-", " "),
-                          fold(team.get("location", ""))}
                 out.append({
                     "id": str(team.get("id", "")),
                     "label": team.get("displayName", "?"),
                     "league": league,
                     "logo": logos[0] if logos else "",
-                    "tokens": sorted(t for t in tokens if t),
+                    "tokens": team_tokens(team),
                 })
     sys.stderr.write("live-scores teams {}: {} sports -> {} squadre\n".format(league, n_sports, len(out)))
     return out

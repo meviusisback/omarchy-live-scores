@@ -28,7 +28,7 @@ Panel {
   // ------------------------------------------------------------ impostazioni
   readonly property string favSetting: String(setting("favoriteTeams", "inter,milan,juventus,napoli,roma,lazio"))
   readonly property var favIds: favSetting.split(",").map(function (s) { return s.trim().toLowerCase() }).filter(function (s) { return s !== "" })
-  readonly property string leaguesSetting: String(setting("leagues", "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/uefa.champions,soccer/uefa.europa,basketball/nba,basketball/euroleague,hockey/nhl"))
+  readonly property string leaguesSetting: String(setting("leagues", "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/ned.1,soccer/por.1,soccer/uefa.champions,soccer/uefa.europa,soccer/uefa.euro,soccer/uefa.nations,basketball/nba,basketball/euroleague,basketball/lba,hockey/nhl"))
   readonly property int refreshIntervalSec: Math.max(30, Number(setting("refreshIntervalSec", 90)) || 90)
 
   // ------------------------------------------------------------------- dati
@@ -73,8 +73,11 @@ Panel {
     "soccer/ita.1": "Serie A", "soccer/eng.1": "Premier League",
     "soccer/esp.1": "LaLiga", "soccer/ger.1": "Bundesliga",
     "soccer/fra.1": "Ligue 1", "soccer/uefa.champions": "Champions",
-    "soccer/uefa.europa": "Europa League", "basketball/nba": "NBA",
-    "basketball/euroleague": "Eurolega", "hockey/nhl": "NHL"
+    "soccer/uefa.europa": "Europa League", "soccer/uefa.euro": "Europei",
+    "soccer/uefa.nations": "Nations League", "soccer/ned.1": "Eredivisie",
+    "soccer/por.1": "Liga Portogallo", "basketball/nba": "NBA",
+    "basketball/euroleague": "Eurolega", "basketball/lba": "Serie A Basket",
+    "hockey/nhl": "NHL"
   })
 
   function leagueLabel(league) { return root.leagueNames[league] || league }
@@ -1076,7 +1079,7 @@ Panel {
 
             Text {
               width: parent.width
-              text: "Aggiungi: digita per cercare tra Serie A, Premier, Liga, Bundesliga, Ligue 1, coppe, NBA, Eurolega e NHL."
+              text: "Aggiungi: digita per cercare tra Serie A, Premier, Liga, Bundesliga, Ligue 1, Eredivisie, coppe, nazionali, NBA, Eurolega, Serie A basket e NHL."
               textFormat: Text.PlainText
               wrapMode: Text.WordWrap
               color: root.foreground

@@ -1,4 +1,5 @@
 """Test del backend live-scores: solo dati finti, niente rete."""
+import os
 import sys
 import unittest
 
@@ -140,6 +141,7 @@ class TestSummary(unittest.TestCase):
 
     def test_teams_payload(self):
         real = fs.http_get_json
+        real_path = fs.teams_cache_path
         fs.http_get_json = lambda url: {"sports": [{"leagues": [{"teams": [
             {"team": {"id": "103", "displayName": "AC Milan",
                       "abbreviation": "MIL", "shortDisplayName": "Milan",
@@ -148,16 +150,25 @@ class TestSummary(unittest.TestCase):
                                  "rel": ["full", "default"]},
                                 {"href": "https://x/103-dark.png",
                                  "rel": ["full", "dark"]}]}}]}]}]}
+        fs.teams_cache_path = lambda: "/tmp/live-scores-test-teams.json"
         try:
+            if os.path.exists("/tmp/live-scores-test-teams.json"):
+                os.remove("/tmp/live-scores-test-teams.json")
             out = fs.teams_payload("soccer/ita.1")
         finally:
             fs.http_get_json = real
+            fs.teams_cache_path = real_path
         self.assertEqual(len(out["teams"]), 1)
         team = out["teams"][0]
         self.assertEqual(team["id"], "103")
         self.assertEqual(team["logo"], "https://x/103.png")
         self.assertIn("milan", team["tokens"])
         self.assertIn("mil", team["tokens"])
+
+    def test_alias_nazionali(self):
+        self.assertIn("italia", fs.team_tokens({"displayName": "Italy"}))
+        self.assertIn("francia", fs.team_tokens({"displayName": "France"}))
+        self.assertNotIn("italia", fs.team_tokens({"displayName": "Inter"}))
 
 
 if __name__ == "__main__":

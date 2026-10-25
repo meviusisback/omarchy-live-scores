@@ -14,16 +14,20 @@ Risultati live delle tue squadre preferite nella barra di Omarchy.
   - **Notizie** — notizie dai campionati delle tue squadre (clic per aprire).
   - **Squadre** — **cerca mentre digiti** (2+ lettere) tra tutte le squadre
     dei campionati configurati, col logo: premi ＋ per seguire, ✕ per togliere,
-    poi Salva.
+    poi Salva. Ci sono anche le **nazionali** (cerca "italia").
 - Pulsanti **Apri su FlashScore** e **Gamecast ESPN** per i dettagli online.
 
 ## Dati
 
 API pubblica ESPN (`site.api.espn.com`), **senza chiave**.
 Copre calcio (Serie A, Premier League, LaLiga, Bundesliga, Ligue 1,
-Champions, Europa League), basket (NBA, Eurolega) e hockey (NHL):
+Eredivisie, Liga Portogallo, Champions, Europa League, Europei,
+Nations League con le nazionali), basket (NBA, Eurolega,
+Serie A italiana) e hockey (NHL):
 centinaia di squadre, ma non le serie minori — quello è il limite
-rispetto al database completo di FlashScore.
+rispetto al database completo di FlashScore. Il basket europeo oltre
+l'Eurolega (EuroCup, campionati nazionali) e i Mondiali (solo durante
+il torneo) non sono esposti da ESPN.
 
 Le "statistiche stile FlashScore" sono i dati ufficiali della partita
 presentati come su FlashScore; per la pagina FlashScore vera usa il pulsante.

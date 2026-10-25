@@ -21,7 +21,7 @@
     "allowMultiple": false,
     "defaults": {
       "favoriteTeams": "inter,milan,juventus,napoli,roma,lazio",
-      "leagues": "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/uefa.champions,soccer/uefa.europa,basketball/nba,basketball/euroleague,hockey/nhl",
+      "leagues": "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/ned.1,soccer/por.1,soccer/uefa.champions,soccer/uefa.europa,soccer/uefa.euro,soccer/uefa.nations,basketball/nba,basketball/euroleague,basketball/lba,hockey/nhl",
       "refreshIntervalSec": 90
     },
     "schema": [
@@ -36,8 +36,8 @@
         "key": "leagues",
         "type": "string",
         "label": "Campionati",
-        "defaultValue": "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/uefa.champions,soccer/uefa.europa,basketball/nba,basketball/euroleague,hockey/nhl",
-        "description": "Campionati coperti e cercabili: soccer/ita.1 (Serie A), soccer/eng.1 (Premier), soccer/esp.1 (LaLiga), soccer/ger.1 (Bundesliga), soccer/fra.1 (Ligue 1), soccer/uefa.champions, soccer/uefa.europa, basketball/nba, basketball/euroleague, hockey/nhl. I vecchi valori senza sport (ita.1…) valgono come calcio."
+        "defaultValue": "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/ned.1,soccer/por.1,soccer/uefa.champions,soccer/uefa.europa,soccer/uefa.euro,soccer/uefa.nations,basketball/nba,basketball/euroleague,basketball/lba,hockey/nhl",
+        "description": "Campionati coperti e cercabili: soccer/ita.1 (Serie A), soccer/eng.1 (Premier), soccer/esp.1 (LaLiga), soccer/ger.1 (Bundesliga), soccer/fra.1 (Ligue 1), soccer/ned.1 (Eredivisie), soccer/por.1, soccer/uefa.champions, soccer/uefa.europa, soccer/uefa.euro (Europei), soccer/uefa.nations (Nations League con le nazionali), basketball/nba, basketball/euroleague, basketball/lba (Serie A basket), hockey/nhl. I valori senza sport (ita.1…) valgono come calcio."
       },
       {
         "key": "refreshIntervalSec",
