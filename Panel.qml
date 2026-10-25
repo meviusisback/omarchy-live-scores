@@ -858,38 +858,6 @@ Panel {
               }
             }
 
-            // Risultati di oggi delle preferite.
-            Column {
-              width: parent.width
-              spacing: Style.space(4)
-              visible: (root.results || []).length > 0
-
-              Text {
-                width: parent.width
-                text: "Risultati di oggi"
-                textFormat: Text.PlainText
-                color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-                font.bold: true
-              }
-
-              Repeater {
-                model: root.results
-
-                Text {
-                  required property var modelData
-                  width: parent.width
-                  text: modelData.home.abbr + " " + modelData.home.score + "–" + modelData.away.score + " " + modelData.away.abbr + "  ·  " + modelData.leagueName
-                  textFormat: Text.PlainText
-                  color: root.dim
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.body
-                  elide: Text.ElideRight
-                }
-              }
-            }
-
             // Quando non c'è nessuna diretta: anteprima prossime.
             Column {
               width: parent.width
@@ -931,6 +899,16 @@ Panel {
 
             Text {
               width: parent.width
+              text: "Prossime partite"
+              textFormat: Text.PlainText
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+            }
+
+            Text {
+              width: parent.width
               visible: (root.upcoming || []).length === 0
               text: root.loading ? "Sto caricando…" : "Nessuna partita in programma per le tue squadre."
               textFormat: Text.PlainText
@@ -950,7 +928,7 @@ Panel {
 
                 Text {
                   width: parent.width
-                  text: modelData.home.name + " – " + modelData.away.name
+                  text: modelData.home.abbr + " – " + modelData.away.abbr
                   textFormat: Text.PlainText
                   color: root.foreground
                   font.family: root.fontFamily
@@ -959,12 +937,39 @@ Panel {
                 }
                 Text {
                   width: parent.width
-                  text: root.fmtDate(modelData.date) + "  ·  " + modelData.leagueName
+                  text: root.fmtDate(modelData.date) + "  ·  " + root.leagueLabel(modelData.league)
                   textFormat: Text.PlainText
                   color: root.dim
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
                 }
+              }
+            }
+
+            // Risultati delle partite passate (solo preferite).
+            Text {
+              width: parent.width
+              visible: (root.results || []).length > 0
+              text: "Risultati"
+              textFormat: Text.PlainText
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+            }
+
+            Repeater {
+              model: root.results
+
+              Text {
+                required property var modelData
+                width: parent.width
+                text: modelData.home.abbr + " " + modelData.home.score + "–" + modelData.away.score + " " + modelData.away.abbr + "  ·  " + (modelData.detail !== "" ? modelData.detail + "  ·  " : "") + root.leagueLabel(modelData.league)
+                textFormat: Text.PlainText
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                elide: Text.ElideRight
               }
             }
           }

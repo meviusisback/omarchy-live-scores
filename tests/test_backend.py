@@ -52,22 +52,49 @@ class TestMatching(unittest.TestCase):
                          ["inter", "juventus", "milan"])
 
     def test_catalog_match(self):
-        tokens = fs.favorite_tokens(["inter"])
-        comps = [{"team": {"displayName": "Internazionale",
-                           "abbreviation": "INT"}}]
-        self.assertTrue(fs.is_favorite_match(comps, tokens))
+        matchers = fs.favorite_matchers(["inter"])
+        match = {"league": "soccer/ita.1",
+                 "home": {"name": "Internazionale", "abbr": "INT"},
+                 "away": {"name": "Juventus", "abbr": "JUV"}}
+        self.assertTrue(fs.match_is_favorite(match, matchers))
 
     def test_no_match(self):
-        tokens = fs.favorite_tokens(["napoli"])
-        comps = [{"team": {"displayName": "Internazionale",
-                           "abbreviation": "INT"}}]
-        self.assertFalse(fs.is_favorite_match(comps, tokens))
+        matchers = fs.favorite_matchers(["napoli"])
+        match = {"league": "soccer/ita.1",
+                 "home": {"name": "Internazionale", "abbr": "INT"},
+                 "away": {"name": "Juventus", "abbr": "JUV"}}
+        self.assertFalse(fs.match_is_favorite(match, matchers))
 
     def test_free_token(self):
-        # Id fuori catalogo usato come parola chiave.
-        tokens = fs.favorite_tokens(["como"])
-        comps = [{"team": {"displayName": "Como 1907", "abbreviation": "COM"}}]
-        self.assertTrue(fs.is_favorite_match(comps, tokens))
+        # Parola fuori catalogo usata come parola chiave.
+        matchers = fs.favorite_matchers(["como"])
+        match = {"league": "soccer/ita.1",
+                 "home": {"name": "Como 1907", "abbr": "COM"},
+                 "away": {"name": "Torino", "abbr": "TOR"}}
+        self.assertTrue(fs.match_is_favorite(match, matchers))
+
+    def test_int_non_prende_saint(self):
+        # "int" (Inter) è dentro "saint" (Saint-Germain): parole intere, no.
+        matchers = fs.favorite_matchers(["inter"])
+        match = {"league": "soccer/fra.1",
+                 "home": {"name": "Paris Saint-Germain", "abbr": "PSG"},
+                 "away": {"name": "Olympique Lyonnais", "abbr": "OL"}}
+        self.assertFalse(fs.match_is_favorite(match, matchers))
+
+    def test_mil_non_prende_milwaukee(self):
+        # Stessa sigla, sport diverso: niente NBA per chi tifa Milan.
+        matchers = fs.favorite_matchers(["milan"])
+        match = {"league": "basketball/nba",
+                 "home": {"name": "Milwaukee Bucks", "abbr": "MIL"},
+                 "away": {"name": "Indiana Pacers", "abbr": "IND"}}
+        self.assertFalse(fs.match_is_favorite(match, matchers))
+
+    def test_id_diretto(self):
+        matchers = fs.favorite_matchers(["133730"])
+        match = {"league": "basketball/nba",
+                 "home": {"id": "133730", "name": "LA Lakers", "abbr": "LAL"},
+                 "away": {"id": "5", "name": "Portland", "abbr": "POR"}}
+        self.assertTrue(fs.match_is_favorite(match, matchers))
 
 
 class TestNormalize(unittest.TestCase):

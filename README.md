@@ -10,7 +10,8 @@ Risultati live delle tue squadre preferite nella barra di Omarchy.
     **formazioni** (11 titolari per parte) e **cronaca testuale** play-by-play
     (in inglese, come la fornisce ESPN), risultati di oggi e — se non c'è
     nessuna diretta — anteprima prossime partite.
-  - **Prossime** — calendario delle preferite (3 giorni in avanti).
+  - **Prossime** — solo le partite delle preferite (3 giorni in avanti),
+    più la sezione **Risultati** con le partite già giocate.
   - **Notizie** — notizie dai campionati delle tue squadre (clic per aprire).
   - **Squadre** — **cerca mentre digiti** (2+ lettere) tra tutte le squadre
     dei campionati configurati, col logo: premi ＋ per seguire, ✕ per togliere,

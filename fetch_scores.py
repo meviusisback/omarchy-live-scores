@@ -191,14 +191,47 @@ def parse_favorites(raw):
     return [fold(p.strip()) for p in str(raw or "").replace(";", ",").split(",") if p.strip()]
 
 
-def favorite_tokens(favorites):
-    """Id del catalogo -> chiavi di ricerca; id sconosciuti usati così come sono."""
+def favorite_matchers(favorites):
+    """Una regola per preferita: (sport|None, id ESPN|None, chiavi).
+    - id numerici (dal cercatore): confronto diretto, sport qualsiasi;
+    - nomi del catalogo: solo nello stesso sport, parole intere o sigla esatta
+      ("int" non deve prendere "saint", "mil" non Milwaukee);
+    - parole libere: parole intere, sport qualsiasi."""
     by_id = {t["id"]: t for t in TEAMS}
     out = []
     for fav in favorites:
         team = by_id.get(fav)
-        out.extend(team["tokens"] if team else [fav])
+        if team:
+            out.append((team["league"].split("/")[0], None, team["tokens"]))
+        elif fav.isdigit():
+            out.append((None, fav, []))
+        else:
+            out.append((None, None, [fav]))
     return out
+
+
+def token_hit(token, name_words, abbr):
+    if token and token == abbr:
+        return True
+    parts = token.split()
+    return bool(parts) and all(p in name_words for p in parts)
+
+
+def match_is_favorite(match, matchers):
+    sport = match["league"].split("/")[0]
+    for fav_sport, fid, tokens in matchers:
+        if fid:
+            if match["home"].get("id") == fid or match["away"].get("id") == fid:
+                return True
+            continue
+        if fav_sport and fav_sport != sport:
+            continue
+        for side in ("home", "away"):
+            info = match[side]
+            words = set(fold(info["name"]).split())
+            if any(token_hit(t, words, fold(info["abbr"])) for t in tokens):
+                return True
+    return False
 
 
 def competitor_info(comp):
@@ -220,15 +253,6 @@ def espn_link(league, event_id):
     # Il calcio ha la pagina "match", gli altri sport la pagina "game".
     kind = "match" if sport == "soccer" else "game"
     return "https://www.espn.com/{}/{}/_/gameId/{}".format(sport, kind, event_id)
-
-
-def is_favorite_match(comps, tokens):
-    hay = " ".join(
-        fold(c.get("team", {}).get("displayName", "")) + " "
-        + fold(c.get("team", {}).get("abbreviation", ""))
-        for c in comps
-    )
-    return any(tok and tok in hay for tok in tokens)
 
 
 def normalize_event(league, event):
@@ -286,8 +310,7 @@ def fetch_news(league, limit=6):
 
 def scoreboard_payload(favorites_raw, leagues_raw):
     favorites = parse_favorites(favorites_raw)
-    tokens = favorite_tokens(favorites)
-    id_favs = set(favorites)  # gli id ESPN numerici si confrontano diretti
+    matchers = favorite_matchers(favorites)
     leagues = league_names(leagues_raw)
 
     today = dt.date.today()
@@ -314,14 +337,7 @@ def scoreboard_payload(favorites_raw, leagues_raw):
     live, upcoming, results = [], [], []
     for league in leagues:
         for match in boards.get(league, []):
-            if favorites and not (
-                    match["home"].get("id") in id_favs
-                    or match["away"].get("id") in id_favs
-                    or (tokens and is_favorite_match(
-                        [{"team": {"displayName": match["home"]["name"],
-                                   "abbreviation": match["home"]["abbr"]}},
-                         {"team": {"displayName": match["away"]["name"],
-                                   "abbreviation": match["away"]["abbr"]}}], tokens))):
+            if favorites and not match_is_favorite(match, matchers):
                 continue
             if match["state"] == "in":
                 live.append(match)
