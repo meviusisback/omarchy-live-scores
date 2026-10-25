@@ -18,74 +18,99 @@ import argparse
 import concurrent.futures as futures
 import datetime as dt
 import json
+import os
 import sys
+import time
 import unicodedata
 import urllib.request
 
-API = "https://site.api.espn.com/apis/site/v2/sports/soccer"
+API = "https://site.api.espn.com/apis/site/v2/sports"
 REQ_TIMEOUT = 12
 
 LEAGUES = {
-    "ita.1": "Serie A",
-    "eng.1": "Premier League",
-    "esp.1": "LaLiga",
-    "ger.1": "Bundesliga",
-    "fra.1": "Ligue 1",
-    "uefa.champions": "Champions League",
-    "uefa.europa": "Europa League",
+    "soccer/ita.1": "Serie A",
+    "soccer/eng.1": "Premier League",
+    "soccer/esp.1": "LaLiga",
+    "soccer/ger.1": "Bundesliga",
+    "soccer/fra.1": "Ligue 1",
+    "soccer/uefa.champions": "Champions League",
+    "soccer/uefa.europa": "Europa League",
+    "basketball/nba": "NBA",
+    "basketball/euroleague": "Eurolega",
+    "hockey/nhl": "NHL",
 }
+
+# ESPN usa /sports/<sport>/<lega>: i valori vecchi senza sport
+# (es. "ita.1") valgono come calcio per non rompere le impostazioni salvate.
+def normalize_league(raw):
+    raw = str(raw or "").strip()
+    if "/" in raw:
+        return raw if raw in LEAGUES else ""
+    for key in LEAGUES:
+        if key == "soccer/" + raw:
+            return key
+    return ""
+
+
+def league_names(raw_list):
+    out = []
+    for item in str(raw_list or "").replace(";", ",").split(","):
+        norm = normalize_league(item)
+        if norm and norm not in out:
+            out.append(norm)
+    return out or list(LEAGUES)
 
 # Catalogo squadre: id stabile, etichetta, campionato, chiavi di ricerca
 # (nomi it/en + abbreviazioni ESPN).
 TEAMS = [
-    {"id": "inter", "label": "Inter", "league": "ita.1",
+    {"id": "inter", "label": "Inter", "league": "soccer/ita.1",
      "tokens": ["inter", "internazionale", "int"]},
-    {"id": "milan", "label": "Milan", "league": "ita.1",
+    {"id": "milan", "label": "Milan", "league": "soccer/ita.1",
      "tokens": ["milan", "ac milan", "mil"]},
-    {"id": "juventus", "label": "Juventus", "league": "ita.1",
+    {"id": "juventus", "label": "Juventus", "league": "soccer/ita.1",
      "tokens": ["juventus", "juve", "juv"]},
-    {"id": "napoli", "label": "Napoli", "league": "ita.1",
+    {"id": "napoli", "label": "Napoli", "league": "soccer/ita.1",
      "tokens": ["napoli", "nap"]},
-    {"id": "roma", "label": "Roma", "league": "ita.1",
+    {"id": "roma", "label": "Roma", "league": "soccer/ita.1",
      "tokens": ["roma", "as roma", "rom"]},
-    {"id": "lazio", "label": "Lazio", "league": "ita.1",
+    {"id": "lazio", "label": "Lazio", "league": "soccer/ita.1",
      "tokens": ["lazio", "laz"]},
-    {"id": "fiorentina", "label": "Fiorentina", "league": "ita.1",
+    {"id": "fiorentina", "label": "Fiorentina", "league": "soccer/ita.1",
      "tokens": ["fiorentina", "fio"]},
-    {"id": "atalanta", "label": "Atalanta", "league": "ita.1",
+    {"id": "atalanta", "label": "Atalanta", "league": "soccer/ita.1",
      "tokens": ["atalanta", "ata"]},
-    {"id": "bologna", "label": "Bologna", "league": "ita.1",
+    {"id": "bologna", "label": "Bologna", "league": "soccer/ita.1",
      "tokens": ["bologna", "bol"]},
-    {"id": "torino", "label": "Torino", "league": "ita.1",
+    {"id": "torino", "label": "Torino", "league": "soccer/ita.1",
      "tokens": ["torino", "tor"]},
-    {"id": "arsenal", "label": "Arsenal", "league": "eng.1",
+    {"id": "arsenal", "label": "Arsenal", "league": "soccer/eng.1",
      "tokens": ["arsenal", "ars"]},
-    {"id": "liverpool", "label": "Liverpool", "league": "eng.1",
+    {"id": "liverpool", "label": "Liverpool", "league": "soccer/eng.1",
      "tokens": ["liverpool", "liv"]},
-    {"id": "man-city", "label": "Man City", "league": "eng.1",
+    {"id": "man-city", "label": "Man City", "league": "soccer/eng.1",
      "tokens": ["manchester city", "man city", "city", "mci"]},
-    {"id": "chelsea", "label": "Chelsea", "league": "eng.1",
+    {"id": "chelsea", "label": "Chelsea", "league": "soccer/eng.1",
      "tokens": ["chelsea", "che"]},
-    {"id": "man-utd", "label": "Man Utd", "league": "eng.1",
+    {"id": "man-utd", "label": "Man Utd", "league": "soccer/eng.1",
      "tokens": ["manchester united", "man utd", "manchester utd",
                 "united", "mun"]},
-    {"id": "tottenham", "label": "Tottenham", "league": "eng.1",
+    {"id": "tottenham", "label": "Tottenham", "league": "soccer/eng.1",
      "tokens": ["tottenham", "spurs", "tot"]},
-    {"id": "real-madrid", "label": "Real Madrid", "league": "esp.1",
+    {"id": "real-madrid", "label": "Real Madrid", "league": "soccer/esp.1",
      "tokens": ["real madrid", "real", "rma"]},
-    {"id": "barcellona", "label": "Barcellona", "league": "esp.1",
+    {"id": "barcellona", "label": "Barcellona", "league": "soccer/esp.1",
      "tokens": ["barcelona", "barcellona", "barca", "bar"]},
-    {"id": "atletico", "label": "Atletico Madrid", "league": "esp.1",
+    {"id": "atletico", "label": "Atletico Madrid", "league": "soccer/esp.1",
      "tokens": ["atletico madrid", "atletico", "atl"]},
-    {"id": "bayern", "label": "Bayern", "league": "ger.1",
+    {"id": "bayern", "label": "Bayern", "league": "soccer/ger.1",
      "tokens": ["bayern", "bayern monaco", "bay", "fc bayern"]},
-    {"id": "dortmund", "label": "Dortmund", "league": "ger.1",
+    {"id": "dortmund", "label": "Dortmund", "league": "soccer/ger.1",
      "tokens": ["dortmund", "borussia dortmund", "bvb", "dor"]},
-    {"id": "leverkusen", "label": "Leverkusen", "league": "ger.1",
+    {"id": "leverkusen", "label": "Leverkusen", "league": "soccer/ger.1",
      "tokens": ["leverkusen", "bayer", "lev", "bayer leverkusen"]},
-    {"id": "psg", "label": "PSG", "league": "fra.1",
+    {"id": "psg", "label": "PSG", "league": "soccer/fra.1",
      "tokens": ["psg", "paris", "parigi", "paris saint-germain"]},
-    {"id": "marsiglia", "label": "Marsiglia", "league": "fra.1",
+    {"id": "marsiglia", "label": "Marsiglia", "league": "soccer/fra.1",
      "tokens": ["marsiglia", "marseille", "om"]},
 ]
 
@@ -109,10 +134,17 @@ def fold(text):
     return "".join(c for c in text if not unicodedata.combining(c)).lower()
 
 
-def http_get_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "omarchy-live-scores/1.0"})
-    with urllib.request.urlopen(req, timeout=REQ_TIMEOUT) as resp:
-        return json.loads(resp.read().decode("utf-8", "replace"))
+def http_get_json(url, tries=3):
+    last = None
+    for attempt in range(tries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "omarchy-live-scores/1.0"})
+            with urllib.request.urlopen(req, timeout=REQ_TIMEOUT) as resp:
+                return json.loads(resp.read().decode("utf-8", "replace"))
+        except Exception as exc:
+            last = exc
+            time.sleep(1 + attempt)
+    raise last
 
 
 def parse_favorites(raw):
@@ -131,13 +163,23 @@ def favorite_tokens(favorites):
 
 def competitor_info(comp):
     team = comp.get("team", {})
+    logos = team.get("logos") or []
+    logo = team.get("logo", "") or (logos[0].get("href", "") if logos else "")
     return {
+        "id": str(team.get("id", "")),
         "name": team.get("displayName", "?"),
         "abbr": team.get("abbreviation", "?"),
         "score": comp.get("score", "0"),
-        "logo": team.get("logo", ""),
+        "logo": logo,
         "winner": bool(comp.get("winner")),
     }
+
+
+def espn_link(league, event_id):
+    sport = league.split("/")[0] if "/" in league else "soccer"
+    # Il calcio ha la pagina "match", gli altri sport la pagina "game".
+    kind = "match" if sport == "soccer" else "game"
+    return "https://www.espn.com/{}/{}/_/gameId/{}".format(sport, kind, event_id)
 
 
 def is_favorite_match(comps, tokens):
@@ -166,7 +208,7 @@ def normalize_event(league, event):
         "detail": stype.get("shortDetail") or stype.get("detail") or "",
         "clock": status.get("displayClock", ""),
         "date": event.get("date", ""),
-        "espnLink": "https://www.espn.com/soccer/match/_/gameId/{}".format(event.get("id", "")),
+        "espnLink": espn_link(league, event.get("id", "")),
     }
 
 
@@ -205,8 +247,8 @@ def fetch_news(league, limit=6):
 def scoreboard_payload(favorites_raw, leagues_raw):
     favorites = parse_favorites(favorites_raw)
     tokens = favorite_tokens(favorites)
-    leagues = [l.strip() for l in str(leagues_raw or "").replace(";", ",").split(",")]
-    leagues = [l for l in leagues if l in LEAGUES] or list(LEAGUES)
+    id_favs = set(favorites)  # gli id ESPN numerici si confrontano diretti
+    leagues = league_names(leagues_raw)
 
     today = dt.date.today()
     jobs = [(league, None) for league in leagues]
@@ -217,7 +259,7 @@ def scoreboard_payload(favorites_raw, leagues_raw):
         jobs.extend((league, day) for league in leagues)
 
     boards = {}
-    with futures.ThreadPoolExecutor(max_workers=min(16, len(jobs))) as pool:
+    with futures.ThreadPoolExecutor(max_workers=min(6, len(jobs))) as pool:
         for league, matches in pool.map(lambda j: fetch_league_board(*j), jobs):
             boards.setdefault(league, []).extend(matches)
     # Stessa partita su più giorni: tengo la prima occorrenza.
@@ -232,11 +274,14 @@ def scoreboard_payload(favorites_raw, leagues_raw):
     live, upcoming, results = [], [], []
     for league in leagues:
         for match in boards.get(league, []):
-            if tokens and not is_favorite_match(
-                    [{"team": {"displayName": match["home"]["name"],
-                               "abbreviation": match["home"]["abbr"]}},
-                     {"team": {"displayName": match["away"]["name"],
-                               "abbreviation": match["away"]["abbr"]}}], tokens):
+            if favorites and not (
+                    match["home"].get("id") in id_favs
+                    or match["away"].get("id") in id_favs
+                    or (tokens and is_favorite_match(
+                        [{"team": {"displayName": match["home"]["name"],
+                                   "abbreviation": match["home"]["abbr"]}},
+                         {"team": {"displayName": match["away"]["name"],
+                                   "abbreviation": match["away"]["abbr"]}}], tokens))):
                 continue
             if match["state"] == "in":
                 live.append(match)
@@ -249,13 +294,18 @@ def scoreboard_payload(favorites_raw, leagues_raw):
     # Le dirette prima per minuto (le più avanzate in alto).
     live.sort(key=lambda m: m["clock"], reverse=True)
 
+    # Notizie dai campionati coinvolti (preferite in campo o scelte),
+    # altrimenti Serie A.
     fav_leagues = []
     for fav in favorites:
         team = next((t for t in TEAMS if t["id"] == fav), None)
         if team and team["league"] in leagues and team["league"] not in fav_leagues:
             fav_leagues.append(team["league"])
+    for match in live + upcoming + results:
+        if match["league"] not in fav_leagues:
+            fav_leagues.append(match["league"])
     news = []
-    for league in (fav_leagues or ["ita.1"]):
+    for league in (fav_leagues or ["soccer/ita.1"]):
         news.extend(fetch_news(league, limit=5))
     news = news[:10]
 
@@ -270,19 +320,20 @@ def summary_payload(league, event_id):
     by_side = {t.get("homeAway"): t for t in teams}
 
     def stats_for(side):
-        raw = {s.get("name"): s.get("displayValue")
-               for s in by_side.get(side, {}).get("statistics", [])}
-        rows = []
-        for label, key in STAT_ROWS:
-            rows.append({"label": label, "home": raw.get(key, "–"),
-                         "away": raw.get(key, "–")})
-        return rows
+        return {s.get("name"): s.get("displayValue")
+                for s in by_side.get(side, {}).get("statistics", [])}
 
-    # Unisce le due colonne: ogni riga ha valore casa e trasferta.
-    home_stats = {s["label"]: s["home"] for s in stats_for("home")}
-    away_stats = {s["label"]: s["away"] for s in stats_for("away")}
-    stats = [{"label": label, "home": home_stats.get(label, "–"),
-              "away": away_stats.get(label, "–")} for label, _ in STAT_ROWS]
+    # Solo le righe che esistono davvero (calcio, basket e hockey
+    # espongono statistiche diverse): niente righe vuote.
+    home_raw = stats_for("home")
+    away_raw = stats_for("away")
+    stats = []
+    for label, key in STAT_ROWS:
+        home, away = home_raw.get(key), away_raw.get(key)
+        if home is None and away is None:
+            continue
+        stats.append({"label": label, "home": home if home is not None else "–",
+                      "away": away if away is not None else "–"})
 
     timeline = []
     for det in header.get("details", []):
@@ -307,6 +358,38 @@ def summary_payload(league, event_id):
             "team": (det.get("team") or {}).get("abbreviation", ""),
         })
 
+    # Formazioni: 11 titolari per parte (numero, nome, ruolo).
+    lineups = []
+    for entry in data.get("rosters", []) or []:
+        side = entry.get("homeAway", "")
+        roster = entry.get("roster", []) or []
+        starters = [p for p in roster if p.get("starter")] or roster[:11]
+        players = []
+        for p in starters:
+            athlete = p.get("athlete") or {}
+            pos = p.get("position") or {}
+            players.append({
+                "num": str(p.get("jersey", "")),
+                "name": athlete.get("shortName") or athlete.get("displayName", "?"),
+                "pos": pos.get("abbreviation", ""),
+            })
+        team = entry.get("team") or {}
+        lineups.append({"side": side,
+                        "team": team.get("abbreviation", ""),
+                        "players": players[:11]})
+
+    # Cronaca testuale (play-by-play), dalla più recente.
+    commentary = []
+    for item in data.get("commentary", []) or []:
+        text = (item.get("text") or "").strip()
+        if not text:
+            continue
+        commentary.append({
+            "clock": ((item.get("time") or {}).get("displayValue") or ""),
+            "text": text[:300],
+        })
+    commentary = commentary[-15:][::-1]
+
     news = [{
         "headline": a.get("headline", ""),
         "description": (a.get("description", "") or "")[:180],
@@ -325,7 +408,99 @@ def summary_payload(league, event_id):
             if comp:
                 match[key] = competitor_info(comp)
     return {"match": match, "stats": stats, "timeline": timeline,
+            "lineups": lineups, "commentary": commentary,
             "news": news, "error": ""}
+
+
+def fetch_league_teams(league):
+    """Tutte le squadre di un campionato, con logo: è il catalogo cercabile."""
+    try:
+        data = http_get_json("{}/{}/teams?limit=100".format(API, league))
+    except Exception as exc:
+        sys.stderr.write("live-scores teams {}: {}\n".format(league, exc))
+        return []
+    n_sports = len(data.get("sports", []))
+    out = []
+    for sport in data.get("sports", []):
+        for lg in sport.get("leagues", []):
+            for entry in lg.get("teams", []):
+                team = entry.get("team", {})
+                logos = [l.get("href", "") for l in team.get("logos", [])
+                         if "dark" not in str(l.get("rel", ""))]
+                tokens = {fold(team.get("displayName", "")),
+                          fold(team.get("abbreviation", "")),
+                          fold(team.get("shortDisplayName", "")),
+                          fold(team.get("slug", "")).replace("-", " "),
+                          fold(team.get("location", ""))}
+                out.append({
+                    "id": str(team.get("id", "")),
+                    "label": team.get("displayName", "?"),
+                    "league": league,
+                    "logo": logos[0] if logos else "",
+                    "tokens": sorted(t for t in tokens if t),
+                })
+    sys.stderr.write("live-scores teams {}: {} sports -> {} squadre\n".format(league, n_sports, len(out)))
+    return out
+
+
+def teams_payload(leagues_raw):
+    leagues = league_names(leagues_raw)
+    catalog, seen = [], set()
+    with futures.ThreadPoolExecutor(max_workers=min(4, len(leagues))) as pool:
+        for teams in pool.map(safe_teams, leagues):
+            for team in teams:
+                key = (team["league"], team["id"])
+                if key not in seen:
+                    seen.add(key)
+                    catalog.append(team)
+    # Cache su disco: se una lega stavolta torna vuota (singhiozzo ESPN),
+    # riusa le squadre salvate invece di far sparire mezza ricerca.
+    catalog = merge_teams_cache(leagues, catalog)
+    if not catalog:
+        # Offline totale: almeno le preferite classiche restano selezionabili.
+        catalog = [{"id": t["id"], "label": t["label"], "league": t["league"],
+                    "logo": "", "tokens": t["tokens"]} for t in TEAMS]
+    catalog.sort(key=lambda t: (t["league"], t["label"]))
+    return {"teams": catalog}
+
+
+def safe_teams(league):
+    """Una lega rotta non deve mai abortire le altre nove."""
+    try:
+        return fetch_league_teams(league)
+    except Exception as exc:
+        sys.stderr.write("live-scores teams {}: FATAL {}\n".format(league, exc))
+        return []
+
+
+def teams_cache_path():
+    base = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    return os.path.join(base, "omarchy-live-scores", "teams.json")
+
+
+def merge_teams_cache(leagues, fresh):
+    try:
+        with open(teams_cache_path(), encoding="utf-8") as fh:
+            cached = json.load(fh)
+    except Exception:
+        cached = []
+    if not isinstance(cached, list):
+        cached = []
+    fresh_keys = set((t["league"], t["id"]) for t in fresh)
+    merged = list(fresh)
+    for team in cached:
+        key = (team.get("league"), team.get("id"))
+        if team.get("league") in leagues and key not in fresh_keys:
+            merged.append(team)
+            fresh_keys.add(key)
+    try:
+        path = teams_cache_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(merged, fh, ensure_ascii=False)
+    except Exception as exc:
+        sys.stderr.write("live-scores cache: {}\n".format(exc))
+    return merged
 
 
 def main(argv):
@@ -338,7 +513,7 @@ def main(argv):
 
     try:
         if args.teams:
-            payload = {"teams": TEAMS}
+            payload = teams_payload(args.leagues)
         elif args.summary:
             payload = summary_payload(args.summary[0], args.summary[1])
         else:

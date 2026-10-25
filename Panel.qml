@@ -28,7 +28,7 @@ Panel {
   // ------------------------------------------------------------ impostazioni
   readonly property string favSetting: String(setting("favoriteTeams", "inter,milan,juventus,napoli,roma,lazio"))
   readonly property var favIds: favSetting.split(",").map(function (s) { return s.trim().toLowerCase() }).filter(function (s) { return s !== "" })
-  readonly property string leaguesSetting: String(setting("leagues", "ita.1,eng.1,esp.1,ger.1,fra.1,uefa.champions,uefa.europa"))
+  readonly property string leaguesSetting: String(setting("leagues", "soccer/ita.1,soccer/eng.1,soccer/esp.1,soccer/ger.1,soccer/fra.1,soccer/uefa.champions,soccer/uefa.europa,basketball/nba,basketball/euroleague,hockey/nhl"))
   readonly property int refreshIntervalSec: Math.max(30, Number(setting("refreshIntervalSec", 90)) || 90)
 
   // ------------------------------------------------------------------- dati
@@ -44,7 +44,22 @@ Panel {
   property var selected: null
   property var summaryStats: []
   property var summaryTimeline: []
+  property var summaryLineups: []
+  property var summaryCommentary: []
   property bool summaryLoading: false
+  property bool scoreArmed: false
+
+  // Ricerca squadre (tab Squadre): digita e filtra in tempo reale.
+  property string searchText: ""
+
+  readonly property string scoreKey: root.firstLive
+    ? (root.firstLive.id + "|" + root.firstLive.home.score + ":" + root.firstLive.away.score) : ""
+
+  onScoreKeyChanged: {
+    // Il primo giro arma soltanto: niente animazione all'avvio.
+    if (!root.scoreArmed) return
+    if (root.scoreKey !== "") goalPulse.restart()
+  }
 
   // Selezione squadre (bozza finché non premi Salva).
   property var pendingFavs: []
@@ -55,11 +70,14 @@ Panel {
   readonly property int extraLive: root.hasLive ? root.liveMatches.length - 1 : 0
 
   readonly property var leagueNames: ({
-    "ita.1": "Serie A", "eng.1": "Premier League", "esp.1": "LaLiga",
-    "ger.1": "Bundesliga", "fra.1": "Ligue 1",
-    "uefa.champions": "Champions League", "uefa.europa": "Europa League"
+    "soccer/ita.1": "Serie A", "soccer/eng.1": "Premier League",
+    "soccer/esp.1": "LaLiga", "soccer/ger.1": "Bundesliga",
+    "soccer/fra.1": "Ligue 1", "soccer/uefa.champions": "Champions",
+    "soccer/uefa.europa": "Europa League", "basketball/nba": "NBA",
+    "basketball/euroleague": "Eurolega", "hockey/nhl": "NHL"
   })
-  readonly property var leagueOrder: ["ita.1", "eng.1", "esp.1", "ger.1", "fra.1", "uefa.champions", "uefa.europa"]
+
+  function leagueLabel(league) { return root.leagueNames[league] || league }
 
   readonly property string heroCaption: {
     if (root.loading) return "AGGIORNAMENTO…"
@@ -98,6 +116,31 @@ Panel {
 
   function isFav(id) { return root.pendingFavs.indexOf(id) !== -1 }
 
+  function foldQ(s) {
+    var text = String(s || "")
+    try { text = text.normalize("NFD").replace(/[̀-ͯ]/g, "") } catch (e) {}
+    return text.toLowerCase()
+  }
+
+  function teamLabel(id) {
+    var found = (root.teams || []).filter(function (t) { return t && String(t.id) === String(id) })[0]
+    return found ? found.label : String(id)
+  }
+
+  readonly property var searchHits: {
+    var q = root.foldQ(root.searchText.trim())
+    if (q.length < 2) return []
+    var hits = []
+    var list = root.teams || []
+    for (var i = 0; i < list.length && hits.length < 8; i++) {
+      var t = list[i]
+      if (!t) continue
+      var hay = root.foldQ((t.label || "") + " " + (t.tokens || []).join(" "))
+      if (hay.indexOf(q) !== -1) hits.push(t)
+    }
+    return hits
+  }
+
   function toggleFav(id) {
     var list = root.pendingFavs.slice()
     var i = list.indexOf(id)
@@ -109,6 +152,7 @@ Panel {
 
   function syncPending() {
     root.pendingFavs = root.favIds.slice()
+    root.searchText = ""
     root.favsDirty = false
   }
 
@@ -134,8 +178,25 @@ Panel {
 
   function refresh() {
     if (boardProc.running) return
+    // Il comando va ricostruito a ogni giro: la riga del processo
+    // congela gli argomenti di avvio e ignorerebbe le nuove preferite.
+    boardProc.command = ["python3", root.scriptPath(), "--favorites", root.favSetting, "--leagues", root.leaguesSetting]
     boardProc.running = true
   }
+
+  function runTeams() {
+    if (teamsProc.running) return
+    teamsProc.command = ["python3", root.scriptPath(), "--teams", "--leagues", root.leaguesSetting]
+    teamsProc.running = true
+  }
+
+  // Se cambi campionati o preferite dalle impostazioni, ricarica subito:
+  // il catalogo squadre segue i campionati, la barra le preferite.
+  onLeaguesSettingChanged: {
+    root.runTeams()
+    root.refresh()
+  }
+  onFavSettingChanged: root.refresh()
 
   function refreshSummary() {
     if (!root.selected || summaryProc.running) return
@@ -164,13 +225,13 @@ Panel {
     }
     if (!sel) sel = root.firstLive
     root.selected = sel
+    if (!root.scoreArmed && !root.loading) root.scoreArmed = true
     if (sel && root.tab === "live") root.refreshSummary()
   }
 
   // ------------------------------------------------------------- processi
   Process {
     id: boardProc
-    command: ["python3", root.scriptPath(), "--favorites", root.favSetting, "--leagues", root.leaguesSetting]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -205,6 +266,8 @@ Panel {
           var data = JSON.parse(text || "{}")
           root.summaryStats = data.stats || []
           root.summaryTimeline = data.timeline || []
+          root.summaryLineups = data.lineups || []
+          root.summaryCommentary = data.commentary || []
         } catch (e) { console.warn("live-scores: summary parse error") }
       }
     }
@@ -215,17 +278,18 @@ Panel {
 
   Process {
     id: teamsProc
-    command: ["python3", root.scriptPath(), "--teams"]
-    running: true
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
         try {
           root.teams = (JSON.parse(text || "{}")).teams || []
+          console.log("live-scores: catalogo", root.teams.length, "squadre per", root.leaguesSetting)
         } catch (e) { root.teams = [] }
       }
     }
     stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: if ((text || "").trim() !== "") console.warn("live-scores teams:", text.trim().slice(0, 500))
     }
   }
 
@@ -255,6 +319,10 @@ Panel {
         return "ok"
       }
       return "bad-tab"
+    }
+    function search(q: string): string {
+      root.searchText = q
+      return String(root.searchHits.length)
     }
   }
 
@@ -296,7 +364,9 @@ Panel {
       }
 
       Text {
+        id: barScore
         anchors.verticalCenter: parent.verticalCenter
+        transformOrigin: Item.Center
         text: root.firstLive ? root.scoreText(root.firstLive) : ""
         textFormat: Text.PlainText
         color: root.foreground
@@ -349,6 +419,13 @@ Panel {
       }
       Component.onCompleted: if (root.bar && root.bar.registerClickTarget) root.bar.registerClickTarget(liveItem)
       Component.onDestruction: if (root.bar && root.bar.unregisterClickTarget) root.bar.unregisterClickTarget(liveItem)
+    }
+
+    // Animazione gol: il punteggio pulsa quando cambia il risultato.
+    SequentialAnimation {
+      id: goalPulse
+      ScaleAnimator { target: barScore; from: 1; to: 1.35; duration: 180; easing.type: Easing.OutCubic }
+      ScaleAnimator { target: barScore; from: 1.35; to: 1; duration: 280; easing.type: Easing.InOutQuad }
     }
   }
 
@@ -687,6 +764,95 @@ Panel {
                   onClicked: Qt.openUrlExternally(root.selected ? root.selected.espnLink : "")
                 }
               }
+
+              // Formazioni (quando disponibili).
+              Column {
+                width: parent.width
+                spacing: Style.space(6)
+                visible: !root.summaryLoading && (root.summaryLineups || []).length > 0
+
+                Text {
+                  width: parent.width
+                  text: "Formazioni"
+                  textFormat: Text.PlainText
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  font.bold: true
+                }
+
+                Row {
+                  width: parent.width
+                  spacing: Style.space(10)
+
+                  Repeater {
+                    model: root.summaryLineups
+
+                    Column {
+                      required property var modelData
+                      width: (parent.width - Style.space(10)) / 2
+                      spacing: Style.space(2)
+
+                      Text {
+                        width: parent.width
+                        text: modelData.team
+                        textFormat: Text.PlainText
+                        color: root.accent
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        font.bold: true
+                      }
+
+                      Repeater {
+                        model: modelData.players
+
+                        Text {
+                          required property var modelData
+                          width: parent.width
+                          text: (modelData.num !== "" ? modelData.num + " " : "") + modelData.name + (modelData.pos !== "" ? " (" + modelData.pos + ")" : "")
+                          textFormat: Text.PlainText
+                          color: root.dim
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.caption
+                          elide: Text.ElideRight
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              // Cronaca testuale (play-by-play, inglese ESPN).
+              Column {
+                width: parent.width
+                spacing: Style.space(4)
+                visible: !root.summaryLoading && (root.summaryCommentary || []).length > 0
+
+                Text {
+                  width: parent.width
+                  text: "Cronaca"
+                  textFormat: Text.PlainText
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  font.bold: true
+                }
+
+                Repeater {
+                  model: root.summaryCommentary
+
+                  Text {
+                    required property var modelData
+                    width: parent.width
+                    text: (modelData.clock !== "" ? modelData.clock + " — " : "") + modelData.text
+                    textFormat: Text.PlainText
+                    wrapMode: Text.WordWrap
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+                }
+              }
             }
 
             // Risultati di oggi delle preferite.
@@ -874,7 +1040,69 @@ Panel {
 
             Text {
               width: parent.width
-              text: "Scegli le squadre da seguire nella barra. Poi premi Salva."
+              text: "Le tue squadre (" + root.pendingFavs.length + ")"
+              textFormat: Text.PlainText
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+            }
+
+            Flow {
+              width: parent.width
+              spacing: Style.space(6)
+
+              Repeater {
+                model: root.pendingFavs
+
+                Button {
+                  required property var modelData
+                  text: "✕ " + root.teamLabel(modelData)
+                  selected: true
+                  onClicked: root.toggleFav(modelData)
+                }
+              }
+            }
+
+            Text {
+              width: parent.width
+              visible: root.pendingFavs.length === 0
+              text: "Nessuna squadra: cercane una qui sotto."
+              textFormat: Text.PlainText
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+
+            Text {
+              width: parent.width
+              text: "Aggiungi: digita per cercare tra Serie A, Premier, Liga, Bundesliga, Ligue 1, coppe, NBA, Eurolega e NHL."
+              textFormat: Text.PlainText
+              wrapMode: Text.WordWrap
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+            }
+
+            TextField {
+              id: teamSearch
+              width: parent.width
+              placeholderText: "Cerca squadra… (es. real, lakers, inter)"
+              text: root.searchText
+              onTextChanged: root.searchText = text
+              onAccepted: {
+                if (root.searchHits.length > 0) {
+                  root.toggleFav(String(root.searchHits[0].id))
+                  root.searchText = ""
+                }
+              }
+            }
+
+            Text {
+              width: parent.width
+              visible: root.searchText.trim().length >= 2 && root.searchHits.length === 0
+              text: "Nessuna squadra trovata: prova con un altro nome o allarga i campionati nelle impostazioni."
               textFormat: Text.PlainText
               wrapMode: Text.WordWrap
               color: root.dim
@@ -883,42 +1111,63 @@ Panel {
             }
 
             Repeater {
-              model: root.leagueOrder
+              model: root.searchHits
 
-              Column {
+              Row {
                 required property var modelData
                 width: parent.width
-                spacing: Style.space(6)
-                visible: teamsInLeague(modelData).length > 0
+                spacing: Style.space(8)
 
-                function teamsInLeague(league) {
-                  return (root.teams || []).filter(function (t) { return t.league === league })
+                Image {
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.font.title * 1.2
+                  height: width
+                  visible: (modelData.logo || "") !== ""
+                  source: visible ? modelData.logo : ""
+                  fillMode: Image.PreserveAspectFit
+                  mipmap: true
+                  cache: true
                 }
 
                 Text {
-                  width: parent.width
-                  text: root.leagueNames[modelData] || modelData
+                  anchors.verticalCenter: parent.verticalCenter
+                  visible: (modelData.logo || "") === ""
+                  text: ""
                   textFormat: Text.PlainText
-                  color: root.foreground
+                  color: root.dim
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.body
-                  font.bold: true
                 }
 
-                Flow {
-                  width: parent.width
-                  spacing: Style.space(6)
+                Column {
+                  width: parent.width - Style.space(110)
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: Style.space(1)
 
-                  Repeater {
-                    model: parent.parent.teamsInLeague(modelData)
-
-                    Button {
-                      required property var modelData
-                      text: (root.isFav(modelData.id) ? "✓ " : "") + modelData.label
-                      selected: root.isFav(modelData.id)
-                      onClicked: root.toggleFav(modelData.id)
-                    }
+                  Text {
+                    width: parent.width
+                    text: modelData.label
+                    textFormat: Text.PlainText
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    elide: Text.ElideRight
                   }
+                  Text {
+                    width: parent.width
+                    text: root.leagueLabel(modelData.league)
+                    textFormat: Text.PlainText
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+                }
+
+                Button {
+                  anchors.verticalCenter: parent.verticalCenter
+                  text: root.isFav(String(modelData.id)) ? "✓" : "＋"
+                  selected: root.isFav(String(modelData.id))
+                  onClicked: root.toggleFav(String(modelData.id))
                 }
               }
             }
@@ -1025,5 +1274,8 @@ Panel {
     }
   }
 
-  Component.onCompleted: root.syncPending()
+  Component.onCompleted: {
+    root.syncPending()
+    root.runTeams()
+  }
 }

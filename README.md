@@ -3,21 +3,27 @@
 Risultati live delle tue squadre preferite nella barra di Omarchy.
 
 - **Nella barra**: quando gioca una preferita vedi loghi + punteggio + minuto
-  (es. `INT 2–1 FIO 67'` con pallino rosso). Altrimenti un pallone ``.
+  (es. `INT 2–1 FIO 67'`). Al gol il punteggio **pulsa**. Altrimenti un pallone ``.
 - **Nel pannello**:
   - **Diretta** — punteggio con loghi, statistiche stile FlashScore
     (possesso, tiri, angoli, falli, parate, cartellini), cronaca gol/cartellini,
-    risultati di oggi e — se non c'è nessuna diretta — anteprima prossime partite.
-  - **Prossime** — calendario delle preferite.
+    **formazioni** (11 titolari per parte) e **cronaca testuale** play-by-play
+    (in inglese, come la fornisce ESPN), risultati di oggi e — se non c'è
+    nessuna diretta — anteprima prossime partite.
+  - **Prossime** — calendario delle preferite (3 giorni in avanti).
   - **Notizie** — notizie dai campionati delle tue squadre (clic per aprire).
-  - **Squadre** — scegli le preferite e premi Salva.
+  - **Squadre** — **cerca mentre digiti** (2+ lettere) tra tutte le squadre
+    dei campionati configurati, col logo: premi ＋ per seguire, ✕ per togliere,
+    poi Salva.
 - Pulsanti **Apri su FlashScore** e **Gamecast ESPN** per i dettagli online.
 
 ## Dati
 
 API pubblica ESPN (`site.api.espn.com`), **senza chiave**.
-Copre Serie A, Premier League, LaLiga, Bundesliga, Ligue 1,
-Champions ed Europa League. Aggiornamento ogni 90 secondi (configurabile).
+Copre calcio (Serie A, Premier League, LaLiga, Bundesliga, Ligue 1,
+Champions, Europa League), basket (NBA, Eurolega) e hockey (NHL):
+centinaia di squadre, ma non le serie minori — quello è il limite
+rispetto al database completo di FlashScore.
 
 Le "statistiche stile FlashScore" sono i dati ufficiali della partita
 presentati come su FlashScore; per la pagina FlashScore vera usa il pulsante.
@@ -26,15 +32,12 @@ presentati come su FlashScore; per la pagina FlashScore vera usa il pulsante.
 
 | Chiave | Esempio |
 |---|---|
-| `favoriteTeams` | `inter,milan,juventus,napoli,roma` |
-| `leagues` | `ita.1,eng.1,esp.1,ger.1,fra.1,uefa.champions,uefa.europa` |
+| `favoriteTeams` | `inter,milan,juventus,napoli,roma` (o id ESPN: `103,118`) |
+| `leagues` | `soccer/ita.1,soccer/eng.1,…,basketball/nba,basketball/euroleague,hockey/nhl` |
 | `refreshIntervalSec` | `90` (min 30) |
 
-Squadre selezionabili: inter, milan, juventus, napoli, roma, lazio,
-fiorentina, atalanta, bologna, torino, arsenal, liverpool, man-city,
-chelsea, man-utd, tottenham, real-madrid, barcellona, atletico,
-bayern, dortmund, leverkusen, psg, marsiglia.
-Puoi anche scrivere parole libere (es. `como`).
+Squadre cercabili: tutte quelle dei campionati sopra (Serie A al completo,
+30 NBA, 32 NHL, Eurolega…). Puoi anche scrivere parole libere (es. `como`).
 
 ## Sviluppo
 
