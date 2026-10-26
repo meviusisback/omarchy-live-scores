@@ -1,5 +1,7 @@
 # Live Scores
 
+![Live Scores panel](preview.png)
+
 Live scores of your favorite teams in the Omarchy bar.
 
 - **In the bar**: while a favorite is playing you see logos + score + minute
