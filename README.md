@@ -14,7 +14,7 @@
 
 ## Why
 
-Following your teams shouldn't mean keeping a browser tab open. Live Scores puts the current score in the bar — logos, score and minute at a glance, pulsing when a goal goes in — and the full match story one click away in the panel: stats, timeline, lineups, commentary, upcoming fixtures, results and news. When none of your favorites are playing, it quietly shows a ball `` and the panel becomes settings.
+Following your teams shouldn't mean keeping a browser tab open. Live Scores puts the current score in the bar — logos, score and minute at a glance, pulsing when a goal goes in — and the full match story one click away in the panel: stats, timeline, lineups, commentary, upcoming fixtures, results and news. When none of your favorites are playing, the bar quietly shows a ball `` and the Live panel shows a short hint; the settings sit behind `4` and the Teams tab.
 
 ## Features
 
@@ -22,8 +22,8 @@ Following your teams shouldn't mean keeping a browser tab open. Live Scores puts
 - **Live tab** — score with logos, FlashScore-style stats (possession, shots, corners, fouls, saves, cards), goal/card timeline, **lineups** (11 starters per side) and textual play-by-play **commentary** in English, as provided by ESPN.
 - **Upcoming tab** — only your favorites' matches (3 days ahead), plus a **Results** section with finished matches.
 - **News tab** — news from your teams' leagues; click to open.
-- **Teams tab** — **search as you type** (2+ letters) across every configured league, with logo: press ＋ to follow, ✕ to remove, then Save. National teams included (search "italia"); free words (e.g. `como`) and ESPN ids work too.
-- **Open on FlashScore** and **Gamecast ESPN** buttons for full details.
+- **Teams tab** — **search as you type** (2+ letters) across every configured league, with logo: press ＋ to follow, ✕ to remove, then Save. National teams are included (search "italia"); the search matches team names and their short tokens, while free words (e.g. `como`) and raw ESPN ids are accepted in the `favoriteTeams` setting.
+- **Open on FlashScore** (opens the FlashScore site) and **Gamecast ESPN** (opens the exact match) buttons for full details.
 
 ## Install
 
@@ -64,7 +64,7 @@ Search covers every team in the leagues above: all of Serie A, 30 NBA, 32 NHL, E
 
 ## How it works
 
-A stdlib-only fetcher (`fetch_scores.py`) polls the ESPN public API (`site.api.espn.com`, **no key needed**) covering soccer (Serie A, Premier League, LaLiga, Bundesliga, Ligue 1, Eredivisie, Liga Portugal, Champions League, Europa League, Euros, Nations League with national teams), basketball (NBA, EuroLeague, Italian LBA Serie A) and hockey (NHL) — but not the lower divisions, which is the gap vs the full FlashScore database. European basketball beyond EuroLeague (EuroCup, domestic leagues) and the World Cup outside tournament time are not exposed by ESPN. The "FlashScore-style stats" are the official match data presented the FlashScore way; the panel button takes you to the real FlashScore page. `Panel.qml` renders bar and panel from the fetched JSON.
+A stdlib-only fetcher (`fetch_scores.py`) polls the ESPN public API (`site.api.espn.com`, **no key needed**) covering soccer (Serie A, Premier League, LaLiga, Bundesliga, Ligue 1, Eredivisie, Liga Portugal, Champions League, Europa League, Euros, Nations League with national teams), basketball (NBA, EuroLeague, Italian LBA Serie A) and hockey (NHL) — but not the lower divisions, which is the gap vs the full FlashScore database. Competition coverage is limited to those leagues: the plugin only accepts the slugs it ships, so a competition outside that list (the EuroCup, domestic basketball leagues other than the Italian LBA, the lower divisions, the World Cup) is not covered at all — supporting one takes a code change. The "FlashScore-style stats" are the official match data presented the FlashScore way; the panel's **Open on FlashScore** button opens the FlashScore site (`flashscore.it`) — the ESPN button opens the exact match. `Panel.qml` renders bar and panel from the fetched JSON.
 
 Verify with `PYTHONPATH=. python3 tests/test_backend.py` — 22 tests, fixtures only, no network. Probe the fetcher directly:
 
