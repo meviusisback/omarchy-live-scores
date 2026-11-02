@@ -7,7 +7,7 @@
   "author": "meviusisback",
   "license": "MIT",
   "repository": "https://github.com/meviusisback/omarchy-live-scores",
-  "description": "Live scores of your favorite teams in the Omarchy bar: logos and live score, FlashScore-style stats in the panel, upcoming matches, results and news. With no live match it shows a ball and the panel becomes settings.",
+  "description": "Live scores of your favorite teams in the Omarchy bar: logos and live score, FlashScore-style stats in the panel, upcoming matches, results and news. With no live match it shows a ball and the panel shows a short hint.",
   "kinds": [
     "bar-widget"
   ],

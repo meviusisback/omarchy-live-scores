@@ -5,6 +5,7 @@
 **Live scores of your favorite teams in the Omarchy bar — logos, score and minute at a glance, FlashScore-style stats, fixtures and news in the panel.**
 
 [![License: MIT](https://img.shields.io/github/license/meviusisback/omarchy-live-scores)](LICENSE)
+![Version](https://img.shields.io/badge/version-1.4.1-blue)
 ![Linux](https://img.shields.io/badge/linux-supported-1793d1)
 
 ![Live Scores panel: live match with stats, timeline and lineups](preview.png)
@@ -66,7 +67,7 @@ Search covers every team in the leagues above: all of Serie A, 30 NBA, 32 NHL, E
 
 A stdlib-only fetcher (`fetch_scores.py`) polls the ESPN public API (`site.api.espn.com`, **no key needed**) covering soccer (Serie A, Premier League, LaLiga, Bundesliga, Ligue 1, Eredivisie, Liga Portugal, Champions League, Europa League, Euros, Nations League with national teams), basketball (NBA, EuroLeague, Italian LBA Serie A) and hockey (NHL) — but not the lower divisions, which is the gap vs the full FlashScore database. Competition coverage is limited to those leagues: the plugin only accepts the slugs it ships, so a competition outside that list (the EuroCup, domestic basketball leagues other than the Italian LBA, the lower divisions, the World Cup) is not covered at all — supporting one takes a code change. The "FlashScore-style stats" are the official match data presented the FlashScore way; the panel's **Open on FlashScore** button opens the FlashScore site (`flashscore.it`) — the ESPN button opens the exact match. `Panel.qml` renders bar and panel from the fetched JSON.
 
-Verify with `PYTHONPATH=. python3 tests/test_backend.py` — 22 tests, fixtures only, no network. Probe the fetcher directly:
+Verify with `PYTHONPATH=. python3 tests/test_backend.py` — 25 tests, fixtures only, no network. Probe the fetcher directly:
 
 ```bash
 python3 fetch_scores.py --favorites "inter,milan" --leagues "soccer/ita.1" | head -c 600

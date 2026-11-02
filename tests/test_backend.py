@@ -41,8 +41,24 @@ class TestLeagues(unittest.TestCase):
         self.assertIn("basketball/nba", fs.valid_leagues_or_empty(""))
 
     def test_link_nba(self):
+        # ESPN serves basketball pages under the league slug; /basketball/... 404s.
         self.assertEqual(fs.espn_link("basketball/nba", "9"),
-                         "https://www.espn.com/basketball/game/_/gameId/9")
+                         "https://www.espn.com/nba/game/_/gameId/9")
+
+    def test_link_nhl(self):
+        self.assertEqual(fs.espn_link("hockey/nhl", "9"),
+                         "https://www.espn.com/nhl/game/_/gameId/9")
+
+    def test_link_soccer(self):
+        self.assertEqual(fs.espn_link("soccer/ita.1", "9"),
+                         "https://www.espn.com/soccer/match/_/gameId/9")
+
+    def test_link_never_uses_the_sport_as_the_first_segment_for_non_soccer(self):
+        for league in ("basketball/nba", "basketball/euroleague",
+                       "basketball/lba", "hockey/nhl"):
+            url = fs.espn_link(league, "9")
+            sport = league.split("/")[0]
+            self.assertNotIn("/{}/".format(sport), url.replace("https://www.espn.com/", ""))
 
 
 class TestMatching(unittest.TestCase):

@@ -256,11 +256,19 @@ def competitor_info(comp):
 
 
 def espn_link(league, event_id):
-    sport = league.split("/")[0] if "/" in league else "soccer"
-    # Il calcio ha la pagina "match", gli altri sport la pagina "game".
+    """Public ESPN page for one event.
+
+    ESPN's URL shape depends on the sport: soccer pages live under
+    ``/soccer/<match|report>``, while basketball and hockey pages are addressed
+    by the LEAGUE slug directly (``/nba/game/...``, ``/nhl/game/...``) — the
+    ``/basketball/...`` and ``/hockey/...`` prefixes return 404.
+    """
+    sport, _, slug = league.partition("/")
     kind = "match" if sport == "soccer" else "game"
     eid = "".join(c for c in str(event_id) if c.isdigit()) or "0"
-    return "https://www.espn.com/{}/{}/_/gameId/{}".format(sport, kind, eid)
+    if sport == "soccer" or not slug:
+        return "https://www.espn.com/soccer/{}/_/gameId/{}".format(kind, eid)
+    return "https://www.espn.com/{}/{}/_/gameId/{}".format(slug, kind, eid)
 
 
 def normalize_event(league, event):
